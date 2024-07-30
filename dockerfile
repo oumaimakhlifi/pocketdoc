@@ -1,32 +1,21 @@
-# Étape 1 : Construction de l'application avec Maven
-FROM maven:3.8.5-openjdk-17 AS builder
+# Étape 1: Construire le JAR avec Maven
+FROM maven:3.8.6-openjdk-17 AS build
 
-# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier le fichier de configuration Maven
-COPY pom.xml .
-
-# Télécharger les dépendances Maven
+COPY pocketdoc-back/pom.xml ./
 RUN mvn dependency:go-offline
 
-# Copier le code source de l'application
-COPY src ./src
+COPY pocketdoc-back/src ./src
+RUN mvn package -DskipTests
 
-# Construire l'application
-RUN mvn clean package -DskipTests
+# Étape 2: Exécuter l'application Spring Boot
+FROM openjdk:17-jdk-alpine
 
-# Étape 2 : Création de l'image finale avec OpenJDK
-FROM openjdk:17-jdk-slim
-
-# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier le fichier JAR construit depuis l'étape précédente
-COPY --from=builder /app/target/pocketdoc-back.jar /app/pocketdoc-back.jar
+COPY --from=build /app/target/pocketdoc-back-0.0.1-SNAPSHOT.jar ./app.jar
 
-# Exposer le port sur lequel l'application Spring Boot écoute
 EXPOSE 8080
 
-# Commande pour exécuter l'application Spring Boot
-CMD ["java", "-jar", "/app/pocketdoc-back.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
